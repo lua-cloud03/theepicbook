@@ -1,0 +1,11 @@
+---
+app_root: /opt/theepicbook
+app_user: ubuntu
+epicbook_repo_url: "https://github.com/lua-cloud03/theepicbook.git"
+epicbook_repo_version: "main"
+epicbook_database: bookstore
+epicbook_db_host: "epicbook-assignment-mysql.cg7sgummo8d3.us-east-1.rds.amazonaws.com"
+epicbook_db_username: epicbookadmin
+epicbook_db_password: "ChangeMe123!"
+epicbook_port: 8080
+epicbook_verify_url: "http://127.0.0.1:8080/"

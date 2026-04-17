@@ -1,0 +1,13 @@
+module.exports = {
+  apps: [
+    {
+      name: "epicbook",
+      script: "server.js",
+      cwd: "{{ app_root }}",
+      env: {
+        NODE_ENV: "production",
+        PORT: "{{ epicbook_port }}"
+      }
+    }
+  ]
+};

@@ -1,0 +1,7 @@
+---
+app_root: /opt/theepicbook
+app_user: ubuntu
+epicbook_repo_url: "https://github.com/lua-cloud03/theepicbook.git"
+epicbook_repo_version: "main"
+mysql_root_password: "demo1234"
+epicbook_database: bookstore

@@ -1,0 +1,4 @@
+---
+server_name: "_"
+epicbook_port: 8080
+nginx_verify_url: "http://127.0.0.1/"

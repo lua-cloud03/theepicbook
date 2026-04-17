@@ -1,0 +1,29 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+
+  - script: |
+      python3 -m pip install --upgrade pip
+      pip install ansible
+    displayName: Install Ansible
+
+  - script: ansible-galaxy collection install -r ansible/requirements.yml
+    displayName: Install Ansible Collections
+
+  - task: DownloadSecureFile@1
+    name: sshKey
+    inputs:
+      secureFile: windows-keyrsa.pem
+
+  - script: |
+      chmod 600 $(sshKey.secureFilePath)
+      ansible-playbook ansible/playbooks/site.yml \
+        -e ansible_ssh_private_key_file=$(sshKey.secureFilePath)
+    displayName: Run Ansible Playbook

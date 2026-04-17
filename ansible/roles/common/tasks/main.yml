@@ -1,0 +1,35 @@
+---
+- name: Install baseline OS packages
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - build-essential
+    state: present
+    update_cache: true
+
+- name: Add NodeSource repository
+  ansible.builtin.command:
+    argv:
+      - bash
+      - -lc
+      - "curl -fsSL https://deb.nodesource.com/setup_18.x | bash -"
+  args:
+    creates: /etc/apt/sources.list.d/nodesource.list
+
+- name: Install Node.js
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: true
+
+- name: Install PM2 globally
+  ansible.builtin.command: npm install -g pm2
+
+- name: Ensure application root exists
+  ansible.builtin.file:
+    path: "{{ app_root }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"

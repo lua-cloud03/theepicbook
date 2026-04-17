@@ -1,0 +1,4 @@
+---
+app_root: /opt/theepicbook
+app_user: ubuntu
+node_major_version: "18"

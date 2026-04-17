@@ -1,0 +1,38 @@
+---
+- name: Install frontend OS packages
+  ansible.builtin.apt:
+    name:
+      - nginx
+    state: present
+    update_cache: true
+
+- name: Write frontend Nginx reverse proxy config
+  ansible.builtin.template:
+    src: epicbook.nginx.conf.j2
+    dest: /etc/nginx/sites-available/epicbook.conf
+    mode: "0644"
+
+- name: Enable EpicBook Nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/epicbook.conf
+    dest: /etc/nginx/sites-enabled/epicbook.conf
+    state: link
+
+- name: Remove default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Validate Nginx config
+  ansible.builtin.command: nginx -t
+
+- name: Restart Nginx
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: restarted
+
+- name: Verify Nginx serves EpicBook locally
+  ansible.builtin.uri:
+    url: "{{ nginx_verify_url }}"
+    status_code: 200

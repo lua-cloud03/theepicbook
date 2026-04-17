@@ -1,0 +1,65 @@
+---
+- name: Clone EpicBook app source onto target
+  ansible.builtin.git:
+    repo: "{{ epicbook_repo_url }}"
+    dest: "{{ app_root }}"
+    version: "{{ epicbook_repo_version }}"
+    force: true
+  become_user: "{{ app_user }}"
+
+- name: Write repo-style Sequelize config
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ app_root }}/config/config.json"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Install Node.js dependencies
+  ansible.builtin.command: npm install
+  args:
+    chdir: "{{ app_root }}"
+  become_user: "{{ app_user }}"
+
+- name: Write PM2 ecosystem file
+  ansible.builtin.template:
+    src: pm2-ecosystem.config.js.j2
+    dest: "{{ app_root }}/ecosystem.config.js"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Start EpicBook with PM2
+  ansible.builtin.command: pm2 start ecosystem.config.js --only epicbook --update-env
+  args:
+    chdir: "{{ app_root }}"
+  become_user: "{{ app_user }}"
+
+- name: Save PM2 process list
+  ansible.builtin.command: pm2 save
+  become_user: "{{ app_user }}"
+
+- name: Enable PM2 on boot
+  ansible.builtin.command: pm2 startup systemd -u {{ app_user }} --hp /home/{{ app_user }}
+  register: pm2_startup
+  changed_when: "'systemctl enable' in pm2_startup.stdout or 'systemctl enable' in pm2_startup.stderr"
+
+- name: Extract PM2 startup command
+  ansible.builtin.set_fact:
+    pm2_startup_command: "{{ (pm2_startup.stdout_lines | select('search', 'sudo env') | list | first | default('')) | regex_replace('^\\$\\s*', '') }}"
+
+- name: Apply PM2 startup command
+  ansible.builtin.shell: "{{ pm2_startup_command }}"
+  when: pm2_startup_command | length > 0
+
+- name: Wait for EpicBook app port
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ epicbook_port }}"
+    delay: 2
+    timeout: 60
+
+- name: Verify EpicBook app responds locally
+  ansible.builtin.uri:
+    url: "{{ epicbook_verify_url }}"
+    status_code: 200

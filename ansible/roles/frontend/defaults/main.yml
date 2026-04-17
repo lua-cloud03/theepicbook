@@ -1,0 +1,5 @@
+---
+backend_private_ip: "10.42.11.197"
+epicbook_port: 8080
+server_name: "_"
+nginx_verify_url: "http://127.0.0.1/"

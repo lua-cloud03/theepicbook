@@ -1,0 +1,16 @@
+---
+- name: Configure backend host
+  hosts: backend
+  become: true
+
+  roles:
+    - common
+    - backend
+
+- name: Configure frontend host
+  hosts: frontend
+  become: true
+
+  roles:
+    - common
+    - frontend

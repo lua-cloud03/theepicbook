@@ -1,0 +1,75 @@
+---
+- name: Ensure MySQL is enabled and running
+  ansible.builtin.service:
+    name: mysql
+    enabled: true
+    state: started
+
+- name: Set MySQL root password for local login
+  ansible.builtin.shell: |
+    mysql -uroot <<'SQL'
+    ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '{{ mysql_root_password }}';
+    FLUSH PRIVILEGES;
+    SQL
+  register: mysql_root_password_result
+  failed_when: false
+  changed_when: "'ERROR' not in mysql_root_password_result.stderr"
+
+- name: Create bookstore database if missing
+  ansible.builtin.shell: |
+    mysql -uroot -p'{{ mysql_root_password }}' -e "CREATE DATABASE IF NOT EXISTS {{ epicbook_database }};"
+  args:
+    chdir: "{{ app_root }}"
+
+- name: Ensure seed marker directory exists
+  ansible.builtin.file:
+    path: /var/lib/epicbook
+    state: directory
+    mode: "0755"
+
+- name: Ensure EpicBook repo is present for DB bootstrap files
+  ansible.builtin.git:
+    repo: "{{ epicbook_repo_url }}"
+    dest: "{{ app_root }}"
+    version: "{{ epicbook_repo_version }}"
+    force: true
+  become_user: "{{ app_user }}"
+
+- name: Import EpicBook schema
+  ansible.builtin.shell: |
+    mysql -uroot -p'{{ mysql_root_password }}' {{ epicbook_database }} < db/BuyTheBook_Schema.sql
+  args:
+    chdir: "{{ app_root }}"
+    creates: /var/lib/epicbook/schema.loaded
+
+- name: Import author seed data
+  ansible.builtin.shell: |
+    mysql -uroot -p'{{ mysql_root_password }}' {{ epicbook_database }} < db/author_seed.sql
+  args:
+    chdir: "{{ app_root }}"
+    creates: /var/lib/epicbook/author.seeded
+
+- name: Import book seed data
+  ansible.builtin.shell: |
+    mysql -uroot -p'{{ mysql_root_password }}' {{ epicbook_database }} < db/books_seed.sql
+  args:
+    chdir: "{{ app_root }}"
+    creates: /var/lib/epicbook/books.seeded
+
+- name: Mark schema import complete
+  ansible.builtin.file:
+    path: /var/lib/epicbook/schema.loaded
+    state: touch
+    mode: "0644"
+
+- name: Mark author seed import complete
+  ansible.builtin.file:
+    path: /var/lib/epicbook/author.seeded
+    state: touch
+    mode: "0644"
+
+- name: Mark books seed import complete
+  ansible.builtin.file:
+    path: /var/lib/epicbook/books.seeded
+    state: touch
+    mode: "0644"
