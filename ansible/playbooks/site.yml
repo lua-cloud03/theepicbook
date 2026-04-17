@@ -1,16 +1,79 @@
 ---
-- name: Configure backend host
-  hosts: backend
+- name: Configure and deploy Docker EpicBook
+  hosts: docker_host
   become: true
+  vars_files:
+    - ../group_vars/all.yml
 
-  roles:
-    - common
-    - backend
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
 
-- name: Configure frontend host
-  hosts: frontend
-  become: true
+    - name: Install Docker and helpers
+      ansible.builtin.apt:
+        name: "{{ docker_packages }}"
+        state: present
 
-  roles:
-    - common
-    - frontend
+    - name: Ensure docker service is enabled and running
+      ansible.builtin.service:
+        name: "{{ docker_service_name }}"
+        enabled: true
+        state: started
+
+    - name: Ensure deploy root exists
+      ansible.builtin.file:
+        path: "{{ deploy_root }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    - name: Synchronize project to target
+      ansible.posix.synchronize:
+        src: "{{ repo_local_path }}/"
+        dest: "{{ compose_project_src }}/"
+        recursive: true
+        delete: true
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=logs"
+
+    - name: Ensure runtime log directories exist
+      ansible.builtin.file:
+        path: "{{ compose_project_src }}/logs/{{ item }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+      loop:
+        - nginx
+        - app
+
+    - name: Copy deployment .env to target
+      ansible.builtin.copy:
+        src: "{{ app_env_local_source }}"
+        dest: "{{ app_env_file }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0640"
+
+    - name: Start EpicBook stack
+      ansible.builtin.command:
+        cmd: docker compose -f {{ compose_file }} up --build -d
+        chdir: "{{ compose_project_src }}"
+      register: compose_up
+      changed_when: "'Started' in compose_up.stdout or 'Recreated' in compose_up.stdout or 'Created' in compose_up.stdout or 'Running' in compose_up.stdout"
+
+    - name: Show compose ps
+      ansible.builtin.command:
+        cmd: docker compose -f {{ compose_file }} ps
+        chdir: "{{ compose_project_src }}"
+      register: compose_ps
+      changed_when: false
+
+    - name: Print compose status
+      ansible.builtin.debug:
+        var: compose_ps.stdout_lines

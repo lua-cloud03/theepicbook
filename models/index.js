@@ -8,10 +8,34 @@ const env = process.env.NODE_ENV || "development";
 const config = require(__dirname + "/../config/config.json")[env];
 let db = {};
 let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable]);
+const databaseUrl = process.env.DATABASE_URL || process.env.JAWSDB_URL;
+const runtimeConfig = {
+  database: process.env.DB_NAME || config.database,
+  username: process.env.DB_USER || config.username,
+  password: process.env.DB_PASSWORD || config.password,
+  host: process.env.DB_HOST || config.host,
+  port: Number(process.env.DB_PORT || config.port || 3306),
+  dialect: process.env.DB_DIALECT || config.dialect || "mysql",
+  logging: process.env.DB_LOG_SQL === "true" ? console.log : false
+};
+
+const configDatabaseUrl = config.use_env_variable ? process.env[config.use_env_variable] : undefined;
+
+if (databaseUrl || configDatabaseUrl) {
+  sequelize = new Sequelize(databaseUrl || configDatabaseUrl, {
+    dialect: runtimeConfig.dialect,
+    logging: runtimeConfig.logging
+  });
 } else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+  sequelize = new Sequelize(
+    runtimeConfig.database,
+    runtimeConfig.username,
+    runtimeConfig.password,
+    {
+      ...config,
+      ...runtimeConfig
+    }
+  );
 }
 
 fs.readdirSync(__dirname)

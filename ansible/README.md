@@ -1,11 +1,32 @@
 # Ansible Deployment
 
-This Ansible layout targets the assignment architecture:
+This Ansible layout targets the Dockerized assignment architecture:
 
-- one frontend Ubuntu VM
-- one backend Ubuntu VM
-- one managed RDS MySQL database
-- frontend host acts as the SSH jump host
-- Nginx on the frontend proxies traffic to the backend private IP
-- Node.js and PM2 run on the backend host
-- schema and seed SQL are imported into RDS from the backend host
+- one Ubuntu VM
+- Docker Engine installed on the target host
+- Docker Compose plugin installed on the target host
+- EpicBook deployed as a three-service Compose stack:
+  - `docker-epicbook-proxy`
+  - `docker-epicbook-app`
+  - `docker-epicbook-db`
+
+## What Ansible does
+
+- installs Docker and Docker Compose plugin
+- creates the remote deployment directory
+- synchronizes the repository to the target host
+- ensures `.env` exists on the target host
+- starts the Compose stack
+- prints service status for verification
+
+## Usage
+
+1. Copy `inventory/hosts.ini.example` to `inventory/hosts.ini`.
+2. Fill in the real EC2 host, user, and SSH key path.
+3. Copy `.env.example` to `.env` in the repo root and set real values.
+4. Run:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook playbooks/site.yml
+```
